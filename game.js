@@ -77,8 +77,10 @@ function draw() {
     for (let j = shots.length - 1; j >= 0; j--) {
       if (shots[j].hits(ovens[i])) {
         score++;
+        playHitSound();
         ovens.splice(i, 1);
         shots.splice(j, 1);
+        createExplosion(ovens[i].x, ovens[i].y); // Assume this function is used for explosion effect
         break;
       }
     }
@@ -120,10 +122,6 @@ function startGame() {
   score = 0; // Reset score when starting a new game
   loop();
 }
-
-startGame();
-
-// ... (The rest of your classes and methods remain unchanged) ...
 
 // Sound effects placeholders
 function playShootSound() {
@@ -246,15 +244,6 @@ function keyPressed() {
     shots.push(new Shot(turkey.x, height - 60));
   }
 }
-
-// Start the game
-function startGame() {
-  ovens = [];
-  shots = [];
-}
-
-// Call this function to start the game
-startGame();
 
 // Particle class
 class Particle {
