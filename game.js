@@ -3,246 +3,127 @@
 let turkey; // The player as a turkey
 let ovens = []; // Array to hold the oncoming ovens
 let shots = []; // Array to hold the shots fired by the turkey
+let particles = []; // Array to hold the particles for effects
 let score = 0; // The player's score
 let bg; // Variable to store background image
 let bgY = 0; // Background scroll position
-let ovenImage; // Variable to store oven image
+let ovenImage, turkeyImage; // Variables to store oven and turkey images
 
 function preload() {
-  // Preload the background image
-  bg = loadImage("background.jpg"); // Replace with the actual path to your background image
-  ovenImage = loadImage("oven.png"); // Replace with the actual path to your oven image
-  turkeyImage = loadImage("turkey.png"); // Replace with the actual path to your turkey image
+  bg = loadImage("background.jpg");
+  ovenImage = loadImage("oven.png");
+  turkeyImage = loadImage("turkey.png");
 }
 
 function setup() {
-  
-  let canvasWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-  let canvasHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+  let canvasWidth =
+    window.innerWidth ||
+    document.documentElement.clientWidth ||
+    document.body.clientWidth;
+  let canvasHeight =
+    window.innerHeight ||
+    document.documentElement.clientHeight ||
+    document.body.clientHeight;
   createCanvas(canvasWidth, canvasHeight);
-  pixelDensity(devicePixelRatio); // Adjust for high-DPI displays
-
-  turkey = new Turkey(width / 2, height - 60); // Place turkey at the bottom center
-  // If you have a custom font, preload it in the preload() function and set it here
-  // textFont('your-custom-font');
-  // Initialize the background Y offset to align the bottom of the image with the bottom of the canvas
+  pixelDensity(devicePixelRatio);
+  turkey = new Turkey(width / 2, height - 60);
   bgY = -bg.height + height;
 }
 
+function draw() {
+  image(bg, 0, bgY);
+  image(bg, 0, bgY + bg.height);
 
-function touchMoved() {
-  // Check if the touch is on the left or right side of the screen
-  if (touchX < width / 2) {
-    turkey.move(-1);
-  } else {
-    turkey.move(1);
+  bgY += 2;
+  if (bgY >= 0) {
+    bgY = -bg.height;
   }
-  // prevent default
-  return false;
+
+  translate(0, -bgY);
+  for (let i = -height; i < height; i += height) {
+    fill(100, 100, 250);
+    rect(0, i, width, height);
+  }
+  translate(0, bgY);
+
+  turkey.display();
+  turkey.move();
+
+  if (frameCount % 60 === 0) {
+    shots.push(new Shot(turkey.x, turkey.y - turkey.size / 2));
+  }
+
+  for (let i = shots.length - 1; i >= 0; i--) {
+    shots[i].show();
+    shots[i].move();
+    if (shots[i].y < 0) {
+      shots.splice(i, 1);
+    }
+  }
+
+  if (frameCount % 120 === 0) {
+    ovens.push(new Oven());
+  }
+
+  for (let i = ovens.length - 1; i >= 0; i--) {
+    ovens[i].update();
+    ovens[i].display();
+    if (ovens[i].offscreen()) {
+      ovens.splice(i, 1);
+    }
+  }
+
+  for (let i = ovens.length - 1; i >= 0; i--) {
+    for (let j = shots.length - 1; j >= 0; j--) {
+      if (shots[j].hits(ovens[i])) {
+        score++;
+        ovens.splice(i, 1);
+        shots.splice(j, 1);
+        break;
+      }
+    }
+  }
+
+  fill(255);
+  textSize(24);
+  text("Score: " + score, 10, 30);
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
-function draw() {
-  // Scrolling background
-  // Draw the background image twice to cover the whole canvas and create a seamless effect
-  image(bg, 0, bgY);
-  image(bg, 0, bgY + bg.height);
 
-  // Update the background Y position
-  bgY += 2;
-  if (bgY >= 0) {
-    // Once the background scrolls past the canvas, reset it to start from the bottom again
-    bgY = -bg.height + height;
-  }
-  translate(0, -bgY);
-  for (let i = -height; i < height; i += height) {
-    fill(100, 100, 250); // Blueish background for contrast - replace with a background image if desired
-    rect(0, i, width, height);
-  }
-  translate(0, bgY); // Reset translation for other elements
-
-  // Player input
-  if (keyIsDown(LEFT_ARROW)) {
+function touchMoved() {
+  if (touchX < width / 2) {
     turkey.move(-1);
-  } else if (keyIsDown(RIGHT_ARROW)) {
+  } else {
     turkey.move(1);
   }
-
-  // Turkey display
-  turkey.show();
-  turkey.update();
-
-  // Shooting
-  if (frameCount % 60 === 0) {
-    shots.push(new Shot(turkey.x + 20, height - 60));
-  }
-
-  // Display and move shots
-  for (let i = shots.length - 1; i >= 0; i--) {
-    shots[i].show();
-    shots[i].move();
-    if (shots[i].y < 0) {
-      shots.splice(i, 1);
-    }
-  }
-
-  // Generate ovens
-  if (frameCount % 120 === 0) {
-    ovens.push(new Oven(random(width), -40));
-  }
-
-  // Update and display ovens with new side-to-side motion
-  for (let i = ovens.length - 1; i >= 0; i--) {
-    ovens[i].update();
-    ovens[i].display();
-    if (ovens[i].offscreen()) {
-      ovens.splice(i, 1);
-    }
-  }
-
-  // Collision detection
-  for (let i = ovens.length - 1; i >= 0; i--) {
-    for (let j = shots.length - 1; j >= 0; j--) {
-      if (shots[j].hits(ovens[i])) {
-        // Increment score
-        score++;
-        // Remove the oven and the shot
-        ovens.splice(i, 1);
-        shots.splice(j, 1);
-        break; // Each shot only hits one oven
-      }
-    }
-  }
-
-  // Handle shots
-  for (let j = shots.length - 1; j >= 0; j--) {
-    shots[j].move();
-    shots[j].display();
-    if (shots[j].offscreen()) {
-      shots.splice(j, 1);
-    } else {
-      // Check for collision with ovens
-      for (let i = ovens.length - 1; i >= 0; i--) {
-        if (shots[j].hits(ovens[i])) {
-          score++;
-          ovens.splice(i, 1);
-          shots.splice(j, 1);
-          break;
-        }
-      }
-    }
-  }
-
-  turkey.display();
-  turkey.move();
-
-  // Display the score
-  fill(255); // White color for the score text
-  textSize(24); // Bigger text size for better visibility
-  text("Score: " + score, 10, 30);
+  return false;
 }
 
-// Sound effects placeholders
-function playShootSound() {
-  // TODO: Replace this with actual sound effect code or library usage
-  console.log("Pew! Pew!"); // Placeholder for shooting sound
+function touchStarted() {
+  shots.push(new Shot(turkey.x, turkey.y - turkey.size / 2));
+  return false;
 }
 
-function playHitSound() {
-  // TODO: Replace this with actual sound effect code or library usage
-  console.log("Boom!"); // Placeholder for hit sound
+function keyPressed() {
+  if (keyCode === 32) {
+    // keyCode for the spacebar is 32
+    shots.push(new Shot(turkey.x, turkey.y - turkey.size / 2));
+  }
 }
 
-// Turkey 
-  translate(0, -bgY);
-  for (let i = -height; i < height; i += height) {
-    fill(100, 100, 250); // Blueish background for contrast - replace with a background image if desired
-    rect(0, i, width, height);
-  }
-  translate(0, bgY); // Reset translation for other elements
-
-  // Player input
-  if (keyIsDown(LEFT_ARROW)) {
-    turkey.move(-1);
-  } else if (keyIsDown(RIGHT_ARROW)) {
-    turkey.move(1);
-  }
-
-  // Turkey display
-  turkey.show();
-  turkey.update();
-
-  // Shooting
-  if (frameCount % 60 === 0) {
-    shots.push(new Shot(turkey.x + 20, height - 60));
-  }
-
-  // Display and move shots
-  for (let i = shots.length - 1; i >= 0; i--) {
-    shots[i].show();
-    shots[i].move();
-    if (shots[i].y < 0) {
-      shots.splice(i, 1);
-    }
-  }
-
-  // Generate ovens
-  if (frameCount % 120 === 0) {
-    ovens.push(new Oven(random(width), -40));
-  }
-
-  // Update and display ovens with new side-to-side motion
-  for (let i = ovens.length - 1; i >= 0; i--) {
-    ovens[i].update();
-    ovens[i].display();
-    if (ovens[i].offscreen()) {
-      ovens.splice(i, 1);
-    }
-  }
-
-  // Collision detection
-  for (let i = ovens.length - 1; i >= 0; i--) {
-    for (let j = shots.length - 1; j >= 0; j--) {
-      if (shots[j].hits(ovens[i])) {
-        // Increment score
-        score++;
-        // Remove the oven and the shot
-        ovens.splice(i, 1);
-        shots.splice(j, 1);
-        break; // Each shot only hits one oven
-      }
-    }
-  }
-
-  // Handle shots
-  for (let j = shots.length - 1; j >= 0; j--) {
-    shots[j].move();
-    shots[j].display();
-    if (shots[j].offscreen()) {
-      shots.splice(j, 1);
-    } else {
-      // Check for collision with ovens
-      for (let i = ovens.length - 1; i >= 0; i--) {
-        if (shots[j].hits(ovens[i])) {
-          score++;
-          ovens.splice(i, 1);
-          shots.splice(j, 1);
-          break;
-        }
-      }
-    }
-  }
-
-  turkey.display();
-  turkey.move();
-
-  // Display the score
-  fill(255); // White color for the score text
-  textSize(24); // Bigger text size for better visibility
-  text("Score: " + score, 10, 30);
+function startGame() {
+  ovens = [];
+  shots = [];
+  score = 0; // Reset score when starting a new game
+  loop();
 }
+
+startGame();
+
+// ... (The rest of your classes and methods remain unchanged) ...
 
 // Sound effects placeholders
 function playShootSound() {
@@ -262,27 +143,6 @@ class Turkey {
     this.y = y;
     this.size = width * 0.1; // Turkey size as 10% of the width
   }
-
-  move() {
-    if (keyIsDown(LEFT_ARROW)) {
-      this.x -= 5;
-    }
-    if (keyIsDown(RIGHT_ARROW)) {
-      this.x += 5;
-    }
-
-    // Constrain to canvas boundaries
-    this.x = constrain(this.x, this.size / 2, width - this.size / 2);
-  }
-
-  display() {
-    imageMode(CENTER);
-    image(turkeyImage, this.x, this.y, this.size, this.size); // Display turkey at its current size and position
-  }
-}
-
-// Shot class
-
 
   move() {
     if (keyIsDown(LEFT_ARROW)) {
@@ -391,7 +251,6 @@ function keyPressed() {
 function startGame() {
   ovens = [];
   shots = [];
-  loop();
 }
 
 // Call this function to start the game
@@ -430,12 +289,6 @@ function createExplosion(x, y) {
     let p = new Particle(x, y);
     particles.push(p);
   }
-}
-
-// We'll assume the 'particles' array exists and add it to the game if not present.
-// Ensure that there's an array to store the particles
-if (typeof particles === "undefined") {
-  var particles = [];
 }
 
 // Integrate particles system update and drawing into the game loop
